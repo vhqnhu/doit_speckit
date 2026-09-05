@@ -27,9 +27,9 @@
 
 **Prerequisite**: Run `npx shadcn-ui@latest init` in the project root before starting Phase 1, if shadcn has not been initialized yet.
 
-- [ ] T001 Create the feature entry page scaffold and align the dashboard layout with the app router in src/app/page.tsx
-- [ ] T002 Set up the pastel light theme tokens and global Tailwind styling in src/app/globals.css
-- [ ] T003 [P] Add the shadcn UI primitives (Button, Dialog, Input, Checkbox, Label, and form field patterns) under src/components/ui/
+- [x] T001 Create the feature entry page scaffold and align the dashboard layout with the app router in src/app/page.tsx
+- [x] T002 Set up the pastel light theme tokens and global Tailwind styling in src/app/globals.css
+- [x] T003 [P] Add the shadcn UI primitives (Button, Dialog, Input, Checkbox, Label, and form field patterns) under src/components/ui/
 
 ---
 
@@ -39,9 +39,9 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T004 Implement browser localStorage validation, load/save helpers, and versioned key handling in src/lib/goal-storage.ts
-- [ ] T005 [P] Implement date math and urgency helpers using date-fns in src/lib/goal-dates.ts
-- [ ] T006 [P] Define the consistent goal sort and hydration rules for current/completed records in src/lib/goal-storage.ts and src/lib/goal-dates.ts
+- [x] T004 Implement browser localStorage validation, load/save helpers, and versioned key handling in src/lib/goal-storage.ts
+- [x] T005 [P] Implement date math and urgency helpers using date-fns in src/lib/goal-dates.ts
+- [x] T006 [P] Define the consistent goal sort and hydration rules for current/completed records in src/lib/goal-storage.ts and src/lib/goal-dates.ts
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel.
 
@@ -55,9 +55,9 @@
 
 ### Implementation for User Story 1
 
-- [ ] T007 [P] [US1] Build the dashboard shell with Current Goals and Completed Goals columns in src/app/page.tsx
-- [ ] T008 [P] [US1] Render goal cards, empty states, and current/completed sorting in src/app/page.tsx
-- [ ] T009 [US1] Wire localStorage hydration, date counts, and deadline display to the dashboard in src/app/page.tsx and src/lib/goal-storage.ts
+- [x] T007 [P] [US1] Build the dashboard shell with Current Goals and Completed Goals columns in src/app/page.tsx
+- [x] T008 [P] [US1] Render goal cards, empty states, and current/completed sorting in src/app/page.tsx
+- [x] T009 [US1] Wire localStorage hydration, date counts, and deadline display to the dashboard in src/app/page.tsx and src/lib/goal-storage.ts
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently.
 
@@ -71,9 +71,9 @@
 
 ### Implementation for User Story 2
 
-- [ ] T010 [P] [US2] Add the Add Goal button and modal shell with title and end-date form fields in src/app/page.tsx
-- [ ] T011 [P] [US2] Implement validation, modal close/reset behavior, and error messaging in src/app/page.tsx
-- [ ] T012 [US2] Create new goals, persist them under the versioned localStorage key, and insert them into the soonest-deadline order in src/app/page.tsx and src/lib/goal-storage.ts
+- [x] T010 [P] [US2] Add the Add Goal button and modal shell with title and end-date form fields in src/app/page.tsx
+- [x] T011 [P] [US2] Implement validation, modal close/reset behavior, and error messaging in src/app/page.tsx
+- [x] T012 [US2] Create new goals, persist them under the versioned localStorage key, and insert them into the soonest-deadline order in src/app/page.tsx and src/lib/goal-storage.ts
 
 **Checkpoint**: At this point, User Stories 1 and 2 should both work independently.
 
@@ -87,9 +87,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T013 [P] [US3] Add completion checkbox behavior so current goals move to Completed Goals and persist completedAt in src/app/page.tsx
-- [ ] T014 [P] [US3] Add delete controls for current and completed goals with immediate removal and localStorage persistence in src/app/page.tsx
-- [ ] T015 [US3] Ensure completed goals render without remaining-day values and without an active checkbox in src/app/page.tsx
+- [x] T013 [P] [US3] Add completion checkbox behavior so current goals move to Completed Goals and persist completedAt in src/app/page.tsx
+- [x] T014 [P] [US3] Add delete controls for current and completed goals with immediate removal and localStorage persistence in src/app/page.tsx
+- [x] T015 [US3] Ensure completed goals render without remaining-day values and without an active checkbox in src/app/page.tsx
 
 **Checkpoint**: User Story 3 should now be independently functional.
 
@@ -103,8 +103,8 @@
 
 ### Implementation for User Story 4
 
-- [ ] T016 [P] [US4] Apply the urgent highlight styling and due-soon visual treatment in src/app/page.tsx and src/app/globals.css
-- [ ] T017 [US4] Ensure overdue goals remain visible in Current Goals while showing the highlight and negative days-left value in src/app/page.tsx and src/lib/goal-dates.ts
+- [x] T016 [P] [US4] Apply the urgent highlight styling and due-soon visual treatment in src/app/page.tsx and src/app/globals.css
+- [x] T017 [US4] Ensure overdue goals remain visible in Current Goals while showing the highlight and negative days-left value in src/app/page.tsx and src/lib/goal-dates.ts
 
 **Checkpoint**: All user stories should now be independently functional.
 
@@ -114,8 +114,8 @@
 
 **Purpose**: Final responsiveness, accessibility, and quality polish across the entire dashboard.
 
-- [ ] T018 [P] Refine responsive layout and truncation behaviors so the app stays readable on mobile and desktop in src/app/page.tsx and src/app/globals.css
-- [ ] T019 Run lint and TypeScript validation for the feature and confirm the manual quickstart scenarios still match the implementation in src/app/page.tsx, src/app/globals.css, and src/lib/goal-storage.ts
+- [x] T018 [P] Refine responsive layout and truncation behaviors so the app stays readable on mobile and desktop in src/app/page.tsx and src/app/globals.css
+- [x] T019 Run lint and TypeScript validation for the feature and confirm the manual quickstart scenarios still match the implementation in src/app/page.tsx, src/app/globals.css, and src/lib/goal-storage.ts
 
 ---
 
