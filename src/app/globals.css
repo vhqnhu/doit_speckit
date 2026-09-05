@@ -139,3 +139,9 @@
     @apply text-2xl font-semibold tracking-tight;
     }
 }
+
+@layer components {
+  .goal-list {
+    @apply max-h-[calc(100vh-12rem)] overflow-y-auto pr-1;
+  }
+}

@@ -1,6 +1,25 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import {
+  closestCenter,
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { GripVertical, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -10,14 +29,114 @@ import {
   Goal,
   loadGoals,
   saveGoals,
-  createGoal,
-  completeGoal,
+  addGoalWithOrdering,
+  completeGoalWithOrdering,
+  deleteGoalWithOrdering,
   getHydratedGoals,
+  loadGoalOrderPreference,
+  persistSuccessfulReorder,
 } from '@/lib/goal-storage';
 import { calculateDaysRemaining, isUrgent, formatEndDate, formatDaysRemaining } from '@/lib/goal-dates';
 
+interface GoalCardContentProps {
+  goal: Goal;
+  onComplete: (goal: Goal) => void;
+  onDelete: (goalId: string) => void;
+  dragHandle?: React.ReactNode;
+}
+
+function GoalCardContent({ goal, onComplete, onDelete, dragHandle }: GoalCardContentProps) {
+  const daysLeft = calculateDaysRemaining(goal.endDate);
+  const isUrgentGoal = isUrgent(goal.endDate);
+  const displayDate = formatEndDate(goal.endDate);
+  const daysDisplay = formatDaysRemaining(daysLeft);
+
+  return (
+    <div
+      className={`border rounded-lg p-4 transition-colors ${
+        isUrgentGoal
+          ? 'bg-urgent/50 border-orange-300'
+          : 'bg-card border-border hover:border-primary/50'
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        {dragHandle}
+        <Checkbox
+          checked={false}
+          onCheckedChange={() => onComplete(goal)}
+          className="mt-1"
+          aria-label={`Complete ${goal.title}`}
+        />
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-foreground break-words">{goal.title}</p>
+          <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground flex-wrap">
+            <span>{displayDate}</span>
+            <span className={isUrgentGoal ? 'font-semibold text-orange-600' : ''}>
+              {daysDisplay}
+            </span>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => onDelete(goal.id)}
+          className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
+          aria-label={`Delete ${goal.title}`}
+          title="Delete goal"
+        >
+          <X className="size-5" aria-hidden="true" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+interface SortableGoalCardProps {
+  goal: Goal;
+  onComplete: (goal: Goal) => void;
+  onDelete: (goalId: string) => void;
+}
+
+function SortableGoalCard({ goal, onComplete, onDelete }: SortableGoalCardProps) {
+  const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: goal.id,
+    data: { goal },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+        transition,
+      }}
+      className={isDragging ? 'opacity-30' : ''}
+    >
+      <GoalCardContent
+        goal={goal}
+        onComplete={onComplete}
+        onDelete={onDelete}
+        dragHandle={
+          <button
+            ref={setActivatorNodeRef}
+            type="button"
+            {...attributes}
+            {...listeners}
+            className="mt-0.5 flex min-h-11 min-w-11 touch-none items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={`Reorder ${goal.title}`}
+            title={`Reorder ${goal.title}`}
+          >
+            <GripVertical className="size-5" aria-hidden="true" />
+          </button>
+        }
+      />
+    </div>
+  );
+}
+
 export default function Home() {
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [isManualOrder, setIsManualOrder] = useState(false);
+  const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [formTitle, setFormTitle] = useState('');
@@ -31,11 +150,16 @@ export default function Home() {
       hydratedRef.current = true;
       const stored = loadGoals();
       setGoals(stored);
+      setIsManualOrder(loadGoalOrderPreference().manualOrder);
       setIsHydrated(true);
     }
   }, []);
 
-  const { currentGoals, completedGoals } = getHydratedGoals(goals);
+  const { currentGoals, completedGoals } = getHydratedGoals(goals, isManualOrder);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   // Validate form inputs
   const validateForm = (): boolean => {
@@ -66,8 +190,7 @@ export default function Home() {
       return;
     }
 
-    const newGoal = createGoal(formTitle, formDate);
-    const updatedGoals = [...goals, newGoal];
+    const updatedGoals = addGoalWithOrdering(goals, formTitle, formDate, isManualOrder);
     saveGoals(updatedGoals);
     setGoals(updatedGoals);
 
@@ -80,17 +203,39 @@ export default function Home() {
 
   // Handle goal completion
   const handleCompleteGoal = (goal: Goal) => {
-    const completedGoal = completeGoal(goal);
-    const updatedGoals = goals.map((g) => (g.id === goal.id ? completedGoal : g));
+    const updatedGoals = completeGoalWithOrdering(goals, goal.id, isManualOrder);
     saveGoals(updatedGoals);
     setGoals(updatedGoals);
   };
 
   // Handle goal deletion
   const handleDeleteGoal = (goalId: string) => {
-    const updatedGoals = goals.filter((g) => g.id !== goalId);
+    const updatedGoals = deleteGoalWithOrdering(goals, goalId, isManualOrder);
     saveGoals(updatedGoals);
     setGoals(updatedGoals);
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveGoal(event.active.data.current?.goal as Goal);
+  };
+
+  const handleDragCancel = () => {
+    setActiveGoal(null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveGoal(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = currentGoals.findIndex((goal) => goal.id === active.id);
+    const newIndex = currentGoals.findIndex((goal) => goal.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const orderedCurrentGoalIds = arrayMove(currentGoals, oldIndex, newIndex).map((goal) => goal.id);
+    const updatedGoals = persistSuccessfulReorder(goals, orderedCurrentGoalIds);
+    setGoals(updatedGoals);
+    setIsManualOrder(true);
   };
 
   // Reset modal state when closing
@@ -130,51 +275,48 @@ export default function Home() {
                 <p className="text-muted-foreground">No active goals yet. Add one to get started!</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {currentGoals.map((goal) => {
-                  const daysLeft = calculateDaysRemaining(goal.endDate);
-                  const isUrgentGoal = isUrgent(goal.endDate);
-                  const displayDate = formatEndDate(goal.endDate);
-                  const daysDisplay = formatDaysRemaining(daysLeft);
-
-                  return (
-                    <div
-                      key={goal.id}
-                      className={`border rounded-lg p-4 transition-colors ${
-                        isUrgentGoal
-                          ? 'bg-urgent/50 border-orange-300'
-                          : 'bg-card border-border hover:border-primary/50'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <Checkbox
-                          checked={false}
-                          onCheckedChange={() => handleCompleteGoal(goal)}
-                          className="mt-1"
-                          aria-label={`Complete ${goal.title}`}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground break-words">{goal.title}</p>
-                          <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground flex-wrap">
-                            <span>{displayDate}</span>
-                            <span className={isUrgentGoal ? 'font-semibold text-orange-600' : ''}>
-                              {daysDisplay}
-                            </span>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleDeleteGoal(goal.id)}
-                          className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
-                          aria-label={`Delete ${goal.title}`}
-                          title="Delete goal"
-                        >
-                          ✕
-                        </button>
-                      </div>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragCancel={handleDragCancel}
+                onDragEnd={handleDragEnd}
+                accessibility={{
+                  announcements: {
+                    onDragStart: ({ active }) => `Picked up ${active.data.current?.goal?.title ?? 'goal'}.`,
+                    onDragOver: ({ over }) => over ? `Moving over ${over.data.current?.goal?.title ?? 'goal'}.` : undefined,
+                    onDragEnd: ({ active, over }) => {
+                      const goalTitle = active.data.current?.goal?.title ?? 'Goal';
+                      const position = currentGoals.findIndex((goal) => goal.id === over?.id) + 1;
+                      return position > 0 ? `${goalTitle} moved to position ${position} of ${currentGoals.length}.` : undefined;
+                    },
+                    onDragCancel: ({ active }) => `${active.data.current?.goal?.title ?? 'Goal'} was not moved.`,
+                  },
+                  screenReaderInstructions: {
+                    draggable: 'To pick up a goal, press Space or Enter. Use the arrow keys to move it, Space or Enter to drop, and Escape to cancel.',
+                  },
+                }}
+              >
+                <SortableContext items={currentGoals.map((goal) => goal.id)} strategy={verticalListSortingStrategy}>
+                  <div className="goal-list space-y-3">
+                    {currentGoals.map((goal) => (
+                      <SortableGoalCard
+                        key={goal.id}
+                        goal={goal}
+                        onComplete={handleCompleteGoal}
+                        onDelete={handleDeleteGoal}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+                <DragOverlay>
+                  {activeGoal ? (
+                    <div className="pointer-events-none rotate-1 shadow-xl" aria-hidden="true">
+                      <GoalCardContent goal={activeGoal} onComplete={handleCompleteGoal} onDelete={handleDeleteGoal} />
                     </div>
-                  );
-                })}
-              </div>
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
             )}
           </section>
 
@@ -196,13 +338,14 @@ export default function Home() {
                           {goal.title}
                         </p>
                       </div>
-                      <button
+                        <button
+                          type="button"
                         onClick={() => handleDeleteGoal(goal.id)}
                         className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
                         aria-label={`Delete ${goal.title}`}
                         title="Delete goal"
                       >
-                        ✕
+                          <X className="size-5" aria-hidden="true" />
                       </button>
                     </div>
                   </div>
