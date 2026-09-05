@@ -159,8 +159,9 @@ style.
 - **FR-004**: Users MUST be able to open an "Add Goal" modal via a visible
   button on the dashboard.
 - **FR-005**: The Add Goal modal MUST contain a title field and an end date
-  field, and MUST require both to be filled with a valid, non-past end date
-  before a goal can be created.
+  field, and MUST require both to be filled. The title MUST be non-empty after
+  trimming whitespace. The end date MUST be today or a future date (rejecting
+  any date earlier than today with a validation message).
 - **FR-006**: Submitting a valid Add Goal form MUST create a new goal in the
   current-goals column and close the modal.
 - **FR-007**: Each active goal MUST have a checkbox that, when checked,
@@ -188,7 +189,14 @@ style.
 ### Key Entities
 
 - **Goal**: Represents a single objective the user is tracking. Key
-  attributes: title (text), end date (date), status (current or completed).
+  attributes:
+  - `id` (string): Client-generated stable identifier for React keys and updates
+  - `title` (text): User-entered goal title
+  - `endDate` (date): ISO calendar date in `yyyy-MM-dd` format
+  - `status` (current | completed): Determines which column renders the goal
+  - `createdAt` (timestamp): ISO timestamp for record creation
+  - `completedAt` (timestamp, required when status=completed): ISO timestamp set when goal is marked complete
+  
   Current goals derive a "days remaining" value from the end date; completed
   goals no longer show this value.
 
